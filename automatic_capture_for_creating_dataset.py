@@ -5,7 +5,7 @@ import time
 import os
 
 
-
+ 
 # 캡처한 이미지를 저장할 경로 설정
 
 save_path = "captured_images"
