@@ -1,9 +1,10 @@
+#Bounding Box
 import cv2
 import numpy as np
 from ultralytics import YOLO
 
 # Load the trained weights file
-model = YOLO("/home/jinjuuk/dev_ws/pt_files/new_custom_m.pt")
+model = YOLO("/home/jinjuuk/dev_ws/pt_files/segmentation_n.pt")
 
 # Open the camera
 cap = cv2.VideoCapture(0)  # Usually 0
@@ -70,6 +71,7 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
 
 
 
