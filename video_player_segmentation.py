@@ -58,6 +58,15 @@ while cap.isOpened():
         # Display FPS on the frame
         cv2.putText(annotated_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
+        # Calculate and print center points of bounding boxes and class names
+        for box in results[0].boxes:
+            x1, y1, x2, y2 = box.xyxy[0]
+            center_x = (x1 + x2) / 2
+            center_y = (y1 + y2) / 2
+            class_id = int(box.cls[0])
+            class_name = model.names[class_id]
+            print(f"Class: {class_name}, Center point: ({center_x:.2f}, {center_y:.2f})")
+
         # Display the frame with detections
         cv2.imshow('YOLOv8 Real-Time Object Detection', annotated_frame)
 
