@@ -5,7 +5,7 @@ from ultralytics import YOLO
 import time
 
 # Load the YOLOv8 segmentation model
-model = YOLO("/home/jinjuuk/dev_ws/pt_files/segmentation_s.pt")
+model = YOLO("/home/jinjuuk/dev_ws/pt_files/new_robot_arm_segmentation_s.pt")
 
 # Open the camera
 cap = cv2.VideoCapture(0)  # 0 for the default camera
@@ -65,7 +65,7 @@ while cap.isOpened():
             center_y = (y1 + y2) / 2
             class_id = int(box.cls[0])
             class_name = model.names[class_id]
-            print(f"Class: {class_name}, Center point: ({center_x:.2f}, {center_y:.2f})")
+            print(f"Class: {class_name}, Center point: ({center_x:.2f}, {center_y:.2f}, Class_Id: {class_id}")
 
         # Display the frame with detections
         cv2.imshow('YOLOv8 Real-Time Object Detection', annotated_frame)
