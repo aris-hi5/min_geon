@@ -5,7 +5,7 @@ from ultralytics import YOLO
 import time
 
 # Load the YOLOv8 segmentation model
-model = YOLO("/home/jinjuuk/dev_ws/pt_files/new_robot_arm_segmentation_s.pt")
+model = YOLO("/home/jinjuuk/dev_ws/pt_files/newjeans.pt")
 
 # Open the camera
 cap = cv2.VideoCapture(0)  # 0 for the default camera

@@ -52,6 +52,9 @@ def convert_to_robot_coordinates(bbox, label):
     robot_coords_mm_y = (center_y - robot_origin_y) * pixel_to_mm_ratio
     print(f"{label} detected at robot coordinates: ({robot_coords_mm_x:.2f} mm, {robot_coords_mm_y:.2f} mm)")
 
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++[[로봇 제어코드 추가]]++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     # 로봇 제어 코드 추가
     send_to_robot(robot_coords_mm_x, robot_coords_mm_y)
 
@@ -66,8 +69,8 @@ def send_to_robot(x, y):
 def get_robot_current_position():
     # 실제 로봇 제어 API를 사용하여 로봇 팔의 현재 위치를 반환하면 될것 같습니다.
     # 예시: (x, y) 좌표를 반환한다고 가정
-    current_x = 5  # 여기에 실제 값으로 대체
-    current_y = 5  # 여기에 실제 값으로 대체
+    current_x = 0  # 여기에 실제 값으로 대체
+    current_y = 0  # 여기에 실제 값으로 대체
     return current_x, current_y
 
 
@@ -84,13 +87,13 @@ def robot_returned_to_origin():
     if abs(current_x - origin_x) < 5 and abs(current_y - origin_y) < 5:  # 일단 오차 범위 5mm로 설정
         return True
     else:
-        return False # Flase면 아이스크림을 주는 동작이 완료되지 않았다고 판단하에 YOLO 모델을 실행시키지 않음.
+        return False # False면 아이스크림을 주는 동작이 완료되지 않았다고 판단하에 YOLO 모델을 실행시키지 않음.
 
-
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # 비디오 캡처 및 YOLO 모델 초기화
 cap = cv2.VideoCapture(0)
-model = YOLO('/home/jinjuuk/dev_ws/pt_files/segmentation_s_batch16_freeze8.pt')
+model = YOLO('/home/jinjuuk/dev_ws/pt_files/newjeans.pt')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 if torch.cuda.is_available():
@@ -212,11 +215,11 @@ while True:
         initial_gray = frame_gray
         detection_enabled = True
         print("Initial background set, detection enabled.")
-    
-    # 로봇이 원래 위치로 돌아왔는지 확인하고 YOLO 감지 활성화
-    # if robot_returned_to_origin():
-    #     yolo_detection_enabled = True
-    #     print("Robot returned to origin, YOLO detection enabled.")
+        
+        
+        # 아이스크림 만들기 동작 시작 후 3초 대기 (로봇팔이 움직일려면 딜레이가 있기 떄문에 3초 동안 기다림)
+        time.sleep(3)
+
 
     # 로봇이 원래 위치로 돌아왔는지 확인하고 YOLO 감지 활성화
     if not robot_arm_returned and robot_returned_to_origin():
@@ -272,7 +275,7 @@ while True:
                     x2 += roi_x_large
                     y2 += roi_y_large
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    if label == 'cup' or label == 'star':
+                    if label == 'fb_cup' or label == 'fb_star' or label == 'side_cup' or label == 'side_star' or label == 'trash':
                         text = f'{label}'
                         text_x = x1
                         text_y = y1 - 10 if y1 - 10 > 10 else y1 + 10
