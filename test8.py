@@ -130,6 +130,37 @@ def find_similar_object(center_x, center_y, label, object_coords, threshold):
                 return obj_id
     return None
 
+
+
+# 마스크 이미지를 입력으로 받아 회전된 바운딩 박스와 각도를 반환
+def get_rotated_bbox(mask):
+    # 마스크에서 외곽선(contours)을 찾는 함수
+    # 마스크를 8비트 unsigned integer 타입으로 변환
+    # 가장 외곽의 윤곽선만 검출
+    # 윤곽선을 단순화하여 메모리를 절약
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 윤곽선이 하나 이상 발견되었는지 확인
+    if contours:
+        cnt = max(contours, key=cv2.contourArea) # 가장 큰 면적을 가진 윤곽선을 선택
+        rect = cv2.minAreaRect(cnt) # 선택된 윤곽선을 포함하는 최소 면적의 회전된 직사각형을 찾음
+        box = cv2.boxPoints(rect)  # 회전된 직사각형의 4개 꼭지점 좌표를 반환
+        #box = np.int0(box) # 좌표값을 정수로 변환, 픽셀 좌표는 정수여야 함
+        box = np.round(box).astype(int) # 좌표값을 정수로 변환, np.int0 대신 사용
+        
+        # 각도 조정
+        angle = rect[2]
+        if angle < -45:
+            angle = 90 + angle
+        return box, angle
+    return None, None
+
+
+    #     return box, rect[2]  # 회전된 바운딩 박스의 4개 꼭지점 좌표 반환, 회전 각도를 반환합니다. rect는 (중심점, (너비, 높이), 각도)의 형태
+    
+    # return None, None # 윤곽선이 발견되지 않았을 경우, None 값을 반환
+
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -359,7 +390,7 @@ while True:
 
                                 # Calculate slope between the midpoints
                                 if len(midpoints) >= 2:
-                                    (x1_mid, y1_mid), (x2_mid, y2_mid) = midpoints[0], midpoints[2]  # Using opposite midpoints
+                                    (x1_mid, y1_mid), (x2_mid, y2_mid) = midpoints[0], midpoints[2]
                                     slope = (y2_mid - y1_mid) / (x2_mid - x1_mid) if (x2_mid - x1_mid) != 0 else float('inf')
                                     angle = np.degrees(np.arctan(slope))
                                     print(f"Slope between midpoints: {slope}, Angle: {angle}")
@@ -367,54 +398,57 @@ while True:
                                     # Draw line between midpoints
                                     cv2.line(undistorted_frame, (x1_mid, y1_mid), (x2_mid, y2_mid), (255, 0, 255), 2)
 
+                                for r in results:
+                                    if r.masks is not None:
+                                        for seg in r.masks.xy:
+                                            mask = np.zeros(undistorted_frame.shape[:2], dtype=np.uint8)
+                                            pts = np.array(seg, dtype=np.int32)
+                                            cv2.fillPoly(mask, [pts], 1)
 
-                
+                                            rotated_bbox, angle = get_rotated_bbox(mask)
+                                            if rotated_bbox is not None:
+                                                cv2.drawContours(undistorted_frame, [rotated_bbox], 0, (0, 255, 255), 2)
 
-                #모든 객체가 20개의 좌표를 수집하면 제어 모드로 전환
-                if all(len(coords) >= 20 for coords in object_coords.values()):
-                    control_mode = True
-                    print("제어 모드로 전환")
+                                                center = tuple(map(int, np.mean(rotated_bbox, axis=0)))
+                                                cv2.putText(undistorted_frame, f"{angle:.1f}", center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+                                                class_id = int(r.boxes[0].cls[0])
+                                                class_name = model.names[class_id]
+                                                if class_name in ['side_cup', 'side_star']:
+                                                    print(f"Class: {class_name}, Center point: ({center[0]:.2f}, {center[1]:.2f}), Class_Id: {class_id}, Angle: {angle:.1f}")
 
 
-            # if trash_detected:
-            #     cv2.putText(undistorted_frame, 'TRASH DETECTED', (10, undistorted_frame.shape[0] - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+                    if all(len(coords) >= 20 for coords in object_coords.values()):
+                        control_mode = True
+                        print("제어 모드로 전환")
 
+                else:
+                    print(f"object_coords:", object_coords)
+                    avg_coords = {}
+                    for object_id, coords in object_coords.items():
+                        avg_x = sum([coord[0] for coord in coords]) / 20
+                        avg_y = sum([coord[1] for coord in coords]) / 20
+                        avg_coords[object_id] = (avg_x, avg_y)
+                        print(f"avg_coords:", avg_coords)
 
+                    center_x_cam, center_y_cam = 320, 240
 
-            else:
-            # 객체 좌표 계산 후 집는 동작
-                print(f"object_coords:",object_coords)
-                avg_coords = {}
-                for object_id, coords in object_coords.items():
-                    avg_x = sum([coord[0] for coord in coords]) / 20
-                    avg_y = sum([coord[1] for coord in coords]) / 20
-                    avg_coords[object_id] = (avg_x, avg_y)
-                    print(f"avg_coords:",avg_coords)
+                    sorted_objects = sorted(avg_coords.items(), key=lambda item: np.sqrt((item[1][0] - center_x_cam) ** 2 + (item[1][1] - center_x_cam) ** 2), reverse=True)
+                    print(f"sorted_objects:", sorted_objects)
+                    for object_id, (avg_x, avg_y) in sorted_objects:
+                        label = '_'.join(object_id.split('_')[:-1])
+                        print(f"label:", label)
+                        if label in ['side_cup', 'side_star']:
+                            distance = np.sqrt((avg_x - center_x_cam) ** 2 + (avg_y - center_y_cam) ** 2)
+                            print(f"{object_id}의 중심으로부터 거리 계산됨: {distance:.2f} 픽셀")
 
-                # 카메라 화면의 중심 좌표
-                center_x_cam, center_y_cam = 320, 240
+                            robot_coords_mm_x = (avg_x - robot_origin_x) * pixel_to_mm_ratio * -1
+                            robot_coords_mm_y = (avg_y - robot_origin_y) * pixel_to_mm_ratio
+                            print(f"{object_id}의 로봇 좌표 계산됨: ({robot_coords_mm_x:.2f} mm, {robot_coords_mm_y:.2f} mm)")
 
-                # 객체들을 중심으로부터의 거리 순으로 정렬 (가장 먼 객체부터)
-                sorted_objects = sorted(avg_coords.items(), key=lambda item: np.sqrt((item[1][0] - center_x_cam) ** 2 + (item[1][1] - center_x_cam) ** 2), reverse=True)
-                print(f"sorted_objects:",sorted_objects) 
-                for object_id, (avg_x, avg_y) in sorted_objects:
-                    label = '_'.join(object_id.split('_')[:-1])
-                    print(f"label:",label)
-                    if label in ['side_cup', 'side_star']:
-                        # 중심으로부터의 거리 계산
-                        distance = np.sqrt((avg_x - center_x_cam) ** 2 + (avg_y - center_y_cam) ** 2)
-                        print(f"{object_id}의 중심으로부터 거리 계산됨: {distance:.2f} 픽셀")
+                            print("집는동작")
 
-                        # 픽셀 좌표를 MM 좌표로 변환
-                        robot_coords_mm_x = (avg_x - robot_origin_x) * pixel_to_mm_ratio * -1
-                        robot_coords_mm_y = (avg_y - robot_origin_y) * pixel_to_mm_ratio
-                        print(f"{object_id}의 로봇 좌표 계산됨: ({robot_coords_mm_x:.2f} mm, {robot_coords_mm_y:.2f} mm)")
-
-                        # ## 집어버리는 동작
-                        print("집는동작")
-                     
-                # 나머지 객체 쓸어버리는 동작
-                print("쓸어버리는 동작 실시")
+                    print("쓸어버리는 동작 실시")
 
     cv2.imshow('frame', undistorted_frame)
 

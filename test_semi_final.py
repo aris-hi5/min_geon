@@ -311,21 +311,21 @@ while True:
                                 x2 += roi_x_large
                                 y2 += roi_y_large
                                 cv2.rectangle(undistorted_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
+                                
                                 # Draw the label and confidence
                                 text = f'{label} {confidence:.2f}'
                                 (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
                                 cv2.rectangle(undistorted_frame, (x1, y1 - text_height - baseline), (x1 + text_width, y1), (0, 255, 0), -1)
                                 cv2.putText(undistorted_frame, text, (x1, y1 - baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-
-                                # YOLO model 실행중 쓰레기 인식 디스플레이 출력
+                                
                                 trash_detected = True
+                                #YOLO model 실행중 쓰레기 인식 디스플레이 출력
                                 if trash_detected:
                                     cv2.putText(undistorted_frame, 'TRASH DETECTED', (10, undistorted_frame.shape[0] - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
 
                                 obj_id = f'{label}_{len(yolo_detected_objects)}'
                                 yolo_detected_objects[obj_id] = (x1, y1, x2 - x1, y2 - y1)
-
+                                
                                 if label in ['side_cup', 'side_star']:
                                     center_x = (x1 + x2) / 2
                                     center_y = (y1 + y2) / 2
@@ -342,31 +342,6 @@ while True:
                                         object_coords[object_id].append((center_x, center_y))
                                         print(f"{object_id}의 좌표 추가됨: ({center_x}, {center_y})")
                                         print(f"{object_id}의 좌표 개수: {len(object_coords[object_id])}")
-
-                                # Find corners using approxPolyDP
-                                rect = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], dtype=np.int32)
-                                epsilon = 0.02 * cv2.arcLength(rect, True)
-                                approx = cv2.approxPolyDP(rect, epsilon, True)
-
-                                # Calculate midpoints
-                                midpoints = []
-                                for i in range(len(approx)):
-                                    x_mid = (approx[i][0][0] + approx[(i + 1) % len(approx)][0][0]) // 2
-                                    y_mid = (approx[i][0][1] + approx[(i + 1) % len(approx)][0][1]) // 2
-                                    midpoints.append((x_mid, y_mid))
-                                    # Draw midpoints
-                                    cv2.circle(undistorted_frame, (x_mid, y_mid), 5, (255, 0, 0), -1)
-
-                                # Calculate slope between the midpoints
-                                if len(midpoints) >= 2:
-                                    (x1_mid, y1_mid), (x2_mid, y2_mid) = midpoints[0], midpoints[2]  # Using opposite midpoints
-                                    slope = (y2_mid - y1_mid) / (x2_mid - x1_mid) if (x2_mid - x1_mid) != 0 else float('inf')
-                                    angle = np.degrees(np.arctan(slope))
-                                    print(f"Slope between midpoints: {slope}, Angle: {angle}")
-
-                                    # Draw line between midpoints
-                                    cv2.line(undistorted_frame, (x1_mid, y1_mid), (x2_mid, y2_mid), (255, 0, 255), 2)
-
 
                 
 

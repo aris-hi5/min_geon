@@ -67,6 +67,8 @@ while cap.isOpened():
             class_name = model.names[class_id]
             print(f"Class: {class_name}, Center point: ({center_x:.2f}, {center_y:.2f}, Class_Id: {class_id}")
 
+
+
         # Display the frame with detections
         cv2.imshow('YOLOv8 Real-Time Object Detection', annotated_frame)
 
